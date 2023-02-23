@@ -1,0 +1,95 @@
+/*
+ * Exp_10: interupt
+ * author: liu abin
+ * all right reserved
+ **/
+#include "conio.h"
+#include "dos.h"
+typedef unsigned char u8;
+typedef unsigned int u16;
+
+// 8254
+u16 M8254_0 = 0x0680;
+u16 M8254_1 = 0x0682;
+u16 M8254_SET = 0x0686;
+u8 cmd_8254 = 0x36;
+u8 freq_h = 0x03;
+u8 freq_l = 0x0e8;
+// 8255
+u16 M8255_SET = 0x0606;
+u16 M8255_A = 0x0600;
+u16 M8255_B = 0x0602;
+u8 cmd_8255 = 0x80;
+// subfunc
+void exit(void);
+//void delay(u16 time);
+void init8254(void);
+void interrupt far interp(void);
+// global var
+u16 count = 0x00;
+u16 temp = 0x01;
+
+void main() {
+	init8254();
+	__asm {
+		MOV AX, OFFSET interp
+		MOV SI, 0038H
+		MOV [ES:SI], AX
+		MOV AX, CS
+		MOV SI, 003AH
+		MOV [ES:SI], AX
+		CLI
+		MOV AL,11H  // ICW1
+		OUT 20H, AL
+		MOV AL, 08H  // ICW2 
+		OUT 21H, AL
+		MOV AL, 04H  // ICW3
+		OUT 21H, AL
+		MOV AL, 03H  // ICW4
+		OUT 21H, AL
+		MOV AL, 00H  // OCW1 //NO MASK
+		OUT 21H, AL
+		STI
+	}
+	while(1) {
+		outportb(M8255_B, (u8)temp);
+		outportb(M8255_A, (u8)count);
+		delay(10000);
+	}
+	exit();
+}
+
+void exit() {
+	__asm{
+		MOV AH,4CH
+		INT 21H
+	}
+}
+
+void delay(u16 time) {
+	int i = 0,j=0;
+	for(;i<time;i++) {
+		for(;j<10000;j++)
+			;
+	}
+}
+
+void init8254() {
+	outportb(M8254_SET, cmd_8254);
+	outportb(M8254_0, freq_l);
+	outportb(M8254_0, freq_h);
+	outportb(M8254_SET, 0x76);
+	outportb(M8254_1, freq_l);
+	outportb(M8254_1, freq_h);
+	outportb(M8255_SET, cmd_8255);
+}
+
+void interrupt interp() {
+	count++;
+	temp = count>>8;
+	/*__asm {
+		MOV AH,4CH
+		INT 21H
+	}*/
+	return;
+}
